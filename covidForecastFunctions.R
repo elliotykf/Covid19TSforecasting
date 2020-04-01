@@ -9,12 +9,12 @@ covid$date <- as.Date(covid$date,format="%d-%m-%Y")
 covid %>% 
   filter(prname=="Canada") %>%
   select(date, numconf) -> covidCanada
-
+covidCanada
 dcovid <- as.data.frame(seq.Date(min(covid$date),max(covid$date),by="day"))
 colnames(dcovid) <- c("date")
 
 covidCanada <- left_join(dcovid,covidCanada,by="date") %>% rename(case=numconf)
-
+covidCanada$case <- as.integer(as.character(covidCanada$case))
 x <- NULL
 for (i in 1:nrow(covidCanada)){
   if (class(covidCanada[i,2])=="integer" & !is.na(covidCanada[i,2])){
@@ -24,6 +24,8 @@ for (i in 1:nrow(covidCanada)){
     covidCanada[i,2] <- x
   }
 }
+
+covidCanada
 
 covidCanada[,"Pred"] <- as.data.frame(matrix(ncol=1,nrow=nrow(covidCanada)))
 covidCanada[,"Lo80"] <- as.data.frame(matrix(ncol=1,nrow=nrow(covidCanada)))
@@ -71,12 +73,12 @@ ggplot(covidCanada[40:69,],aes(x=date)) +
 covidCanada
 
 ###extractor function 
-#takes in the name of the province as a string
-#outputs the dataframe with the cases in the province by date 
-extract <- function(province){
+#takes in the name of the province and the name of the columns, both in the string form
+#outputs the dataframe with the cases variable of interest in the province by date 
+extract <- function(pn,cn){
   covid %>% 
-    filter(prname==province) %>%
-    select(date, numconf) -> covidCanada
+    filter(prname==pn) %>%
+    select(date, cn) -> covidCanada
   
   #the data source excluded the days where there's no change in number
   #autofill a dataframe with the dates from the first day to the current day
@@ -84,8 +86,11 @@ extract <- function(province){
   colnames(dcovid) <- c("date")
   
   #merge the case data into the dataframe with all dates 
-  covidCanada <- left_join(dcovid,covidCanada,by="date") %>% rename(case=numconf)
+  covidCanada <- left_join(dcovid,covidCanada,by="date") %>% rename(case=cn)
   #after merging, the days where there's no change in number will have NA values
+  
+  #convert the case column from factor to numeric integer 
+  covidCanada$case <- as.integer(as.character(covidCanada$case))
   
   ##fill the NA values 
   #initialize value-storage variable x
@@ -125,9 +130,10 @@ extract <- function(province){
 #model training function with data
 #not really useful... but could probably tell whether the model is underestimating or overestimating from here... 
 #the extractor function is called in here so there's no need to call the extractor function and save the dataframe in an object
-trainForecast <- function(covidCanada){
-  #extract the dataframe using the name of the province in a string
-  covidCanada <- extract(covidCanada)
+trainForecast <- function(pn,cn){
+  #embed extractor function
+  #extractor function takes name of province and name of column both in strings
+  covidCanada <- extract(pn,cn)
   
   #the number of rows of the dataset
   #useful for indexing in loops
@@ -168,9 +174,10 @@ trainForecast <- function(covidCanada){
 
 ##actual forecaster function
 #extractor function embedded so no need to call it separately 
-forecaster <- function(covidCanada){
-  #get the dataframe using the name of the province in a string
-  covidCanada <- extract(covidCanada)
+forecaster <- function(pn,cn){
+  #embed extractor function
+  #extractor function takes name of province and name of column both in strings
+  covidCanada <- extract(pn,cn)
   #the number of observations in the data, for indexing purpose later
   nrow <- nrow(covidCanada)
   #save the forecast object from the model training 
@@ -208,22 +215,34 @@ forecaster <- function(covidCanada){
 }
 
 ###forecaster function with an option to choose how many days to go back when training the model for forecasting 
-forecasterDB <- function(covidCanada,db){
-  covidCanada <- extract(covidCanada)
+#6 days of lag in data confirmation was noted in the source
+#meaning the data point from up to 6 days before the current date until the current date may be unreliable and is probably not useful as training data
+forecasterDB <- function(pn,cn,db){
+  #embed extractor function 
+  #extractor function takes the name of the province and the name of the column, both in string 
+  covidCanada <- extract(pn,cn)
+  #record the number of rows of the subsetted dataset for indexing purpose
   nrow <- nrow(covidCanada)
+  #this is the index of the data which the user will use to train the model
+  #get it by subtracting the defined day lags (db) from the number of total observation in the dataframe 
   val <- nrow-db
+  #subset the training data and fit the model
   forecast <- forecast(auto.arima(covidCanada[1:val,2]))
   
+  #saving forecast and CI values into the dataframe 
   covidCanada[val:(val+9),"Pred"] <- forecast$mean
   covidCanada[val:(val+9),c("Lo80","Lo95")] <- forecast$lower[,1:2]
   covidCanada[val:(val+9),c("Hi80","Hi95")] <- forecast$upper[,1:2]
   
+  #autofill the dates for the new forecast values
   for (i in val:(val+9)){
     covidCanada[i,1] <- covidCanada[i-1,1]+1 
   }
   
+  #display the data table
   print(covidCanada)
   
+  #plot 
   ggplot(covidCanada[(val-10):(val+9),],aes(x=date)) + 
     geom_line(aes(y=case)) +
     geom_line(aes(y=Pred),color="red") +
@@ -233,3 +252,4 @@ forecasterDB <- function(covidCanada,db){
     geom_line(aes(y=Hi95), color = "blue", linetype = "dashed") +
     theme_bw()
 }
+
