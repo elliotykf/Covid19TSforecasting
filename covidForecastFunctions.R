@@ -253,3 +253,11 @@ forecasterDB <- function(pn,cn,db){
     theme_bw()
 }
 
+extract("British Columbia","numdeaths")
+
+colnames(covid)
+
+###issues:
+# the way missing data is handled should be different depending on the column of interest
+# if the column is Deaths, New, Recoveries, then the missing values should be filled with 0
+# if the column is Case, then the missing values should be filled with the previous numerical value
