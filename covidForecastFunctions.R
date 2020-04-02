@@ -1,6 +1,8 @@
 library(ggplot2)
 library(tidyverse)
 library(forecast)
+library(rvest)
+library(stringr)
 
 ###dry run
 #notes on each step are in the functions 
@@ -254,7 +256,9 @@ forecasterDB <- function(pn,cn,db){
 }
 
 
-
+###Forecaster function using data from the epidemiological summary of canada
+#dti = data table of interest: "N" = new cases table, "C" = cumulative cases table
+#d = number of days to go back from current date to include as the training data for forecasting 
 Cforecaster <- function(dti,d){
   #scrape data table from government of canada covid19 epidemiological summary website 
   link <- 'https://www.canada.ca/en/public-health/services/diseases/2019-novel-coronavirus-infection/health-professionals/epidemiological-summary-covid-19-cases.html'
@@ -310,4 +314,4 @@ Cforecaster <- function(dti,d){
     geom_line(aes(y=Hi95),color="green") +
     theme_bw()
 }
-Cforecaster("N",1)
+
