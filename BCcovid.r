@@ -94,16 +94,37 @@ bcforecast <- function(col,d){
   #convert the case column into integer type 
   data1[,2] <- as.integer(data1[,2])
   
-  ##needs some work to accommodate the autofilling difference for new, death, total cases 
-  #do an if-else here for Totals 
-  
-  #this is for New Cases, New Deaths and New Recoveries 
-  for (i in 1:nrow(data1)){
-    if (is.na(data1[i,2])==TRUE) {
-      data1[i,2] <- 0
+  #check the column of interest to decide how to handle missing data
+  #if the column of interest from the input is Total
+  #then autofill missing data with the previously encountered numerical value
+  if (col %in% c("Total Cases","Total Deaths", "Total Recoveries")){
+    
+    x <- NULL
+    #some provinces have 0 case on the first day of all, so after the merge the value will be NA on the first day
+    #if the value is NA then fill the cell with 0 until an actual value is encountered
+    if (is.na(data1[1,2])==TRUE){
+      x = 0
+    }
+    #check the cells for actual numerical values and not NA
+    for (i in 1:nrow(data1)){
+      if (class(data1[i,2])=="integer" & !is.na(data1[i,2])){
+        #if the cell actually contains a value then the value-storage variable will change to that value
+        x <- data1[i,2]
+      }
+      #if the cell has NA value, then fill it with whatever value saved in the value-storage variable
+      #either 0 or an actual value
+      if (is.na(data1[i,2])==TRUE){
+        data1[i,2] <- x
+      }
+    } #if the column of interest is not Total, then it'll be New
+  } else {
+    #autofill all missing data with 0
+    for (i in 1:nrow(data1)){
+      if (is.na(data1[i,2])==TRUE) {
+        data1[i,2] <- 0
+      }
     }
   }
-  
   #auto arima model fitting using the data
   #user define the number of days 
   #which is the number of days that we want to go back 
@@ -142,3 +163,4 @@ bcforecast <- function(col,d){
 # if the column is Deaths, New, Recoveries, then the missing values should be filled with 0
 # if the column is Case, then the missing values should be filled with the previous numerical value
 
+bcforecast("Total Cases",6)
