@@ -256,25 +256,37 @@ forecasterDB <- function(pn,cn,db){
 
 
 Cforecaster <- function(dti,d){
-  
+  #scrape data table from government of canada covid19 epidemiological summary website 
   link <- 'https://www.canada.ca/en/public-health/services/diseases/2019-novel-coronavirus-infection/health-professionals/epidemiological-summary-covid-19-cases.html'
   web <- read_html(link)
   
-  #the 2nd html table is the table of the data
+  #user can choose which table to read and analyze (N or C)
+  #N = new cases; C = Cumulative cases 
   if (dti=="N"){
+    #New cases table is in the 2nd html table 
     data1 <- (html_table(web,fill=TRUE)[2])
   } else if (dti=="C"){
+    #Cumulative cases table is in the 1st html table
     data1 <- (html_table(web,fill=TRUE)[1])
   }
   
+  #convert to data frame
   data1 <- as.data.frame(data1)
   colnames(data1) <- c("Date","Case")
+  #convert character to date
   data1[,1] <- as.Date(data1[,1])
+
+  #cumulative cases number over 1000 is recorded with a comma
   if (dti=="C"){
+    #strip the comma and convert to numeric before analysis 
     data1[,2] <- as.numeric(gsub(",","",data1[,2]))
   }
+  #forecast
+  #user defines the number of days to go back, this sets the last data point to be included in the training data 
   forecast <- forecast(auto.arima(data1[1:(nrow(data1)-d),2]))
+  #save the number of rows in data1 for indexing purpose 
   nr <- nrow(data1)
+  #there are 10 forecasted values each time forecast is called 
   data1[(nr-d+1):(nr-d+length(forecast$mean)),"Pred"] <- forecast$mean[1:10]
   data1[(nr-d+1):(nr-d+length(forecast$mean)),"Lo80"] <- forecast$lower[,1]
   data1[(nr-d+1):(nr-d+length(forecast$mean)),"Lo95"] <- forecast$lower[,2]
@@ -298,4 +310,4 @@ Cforecaster <- function(dti,d){
     geom_line(aes(y=Hi95),color="green") +
     theme_bw()
 }
-Cforecaster("C",2)
+Cforecaster("N",1)
