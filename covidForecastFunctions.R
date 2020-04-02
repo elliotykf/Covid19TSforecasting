@@ -25,9 +25,9 @@ for (i in 1:nrow(covidCanada)){
   }
 }
 
-covidCanada
+mode(covidCanada)
 
-covidCanada[,"Pred"] <- as.data.frame(matrix(ncol=1,nrow=nrow(covidCanada)))
+  covidCanada[,"Pred"] <- as.data.frame(matrix(ncol=1,nrow=nrow(covidCanada)))
 covidCanada[,"Lo80"] <- as.data.frame(matrix(ncol=1,nrow=nrow(covidCanada)))
 covidCanada[,"Hi80"] <- as.data.frame(matrix(ncol=1,nrow=nrow(covidCanada)))
 covidCanada[,"Lo95"] <- as.data.frame(matrix(ncol=1,nrow=nrow(covidCanada)))
@@ -253,11 +253,49 @@ forecasterDB <- function(pn,cn,db){
     theme_bw()
 }
 
-extract("British Columbia","numdeaths")
 
-colnames(covid)
 
-###issues:
-# the way missing data is handled should be different depending on the column of interest
-# if the column is Deaths, New, Recoveries, then the missing values should be filled with 0
-# if the column is Case, then the missing values should be filled with the previous numerical value
+Cforecaster <- function(dti,d){
+  
+  link <- 'https://www.canada.ca/en/public-health/services/diseases/2019-novel-coronavirus-infection/health-professionals/epidemiological-summary-covid-19-cases.html'
+  web <- read_html(link)
+  
+  #the 2nd html table is the table of the data
+  if (dti=="N"){
+    data1 <- (html_table(web,fill=TRUE)[2])
+  } else if (dti=="C"){
+    data1 <- (html_table(web,fill=TRUE)[1])
+  }
+  
+  data1 <- as.data.frame(data1)
+  colnames(data1) <- c("Date","Case")
+  data1[,1] <- as.Date(data1[,1])
+  if (dti=="C"){
+    data1[,2] <- as.numeric(gsub(",","",data1[,2]))
+  }
+  forecast <- forecast(auto.arima(data1[1:(nrow(data1)-d),2]))
+  nr <- nrow(data1)
+  data1[(nr-d+1):(nr-d+length(forecast$mean)),"Pred"] <- forecast$mean[1:10]
+  data1[(nr-d+1):(nr-d+length(forecast$mean)),"Lo80"] <- forecast$lower[,1]
+  data1[(nr-d+1):(nr-d+length(forecast$mean)),"Lo95"] <- forecast$lower[,2]
+  data1[(nr-d+1):(nr-d+length(forecast$mean)),"Hi80"] <- forecast$upper[,1]
+  data1[(nr-d+1):(nr-d+length(forecast$mean)),"Hi95"] <- forecast$upper[,2]
+  #autofill the forecasted days 
+  for (i in (nr+1):(nrow(data1))){
+    data1[i,1] <- data1[i-1,1]+1
+  }
+  #take a look at the data
+  print(data1)
+  #rename the user-selected column to Case 
+  #probably not necessary if i just changed the y in ggplot 
+  colnames(data1)[2] <- c("Case")
+  ggplot(data1[(nrow(data1)-25):(nrow(data1)),],aes(x=Date)) +
+    geom_line(aes(y=Case),color="black") +
+    geom_line(aes(y=Pred),color="red") +
+    geom_line(aes(y=Lo80),color="blue") +
+    geom_line(aes(y=Lo95),color="green") +
+    geom_line(aes(y=Hi80),color="blue") +
+    geom_line(aes(y=Hi95),color="green") +
+    theme_bw()
+}
+Cforecaster("C",2)
