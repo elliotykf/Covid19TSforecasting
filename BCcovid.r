@@ -75,6 +75,25 @@ bcforecast <- function(col,d){
   
   #remove the first observation which contains the sub name 
   dt %>% filter(Date != "Date") -> data1
+  
+  #numbers above a thousand is recorded with a comma, it cannot be converted to numeric automatically
+  #same issue for numbers recorded with % 
+  #convert them into numeric before proceeding 
+  
+  #check each column whether they contain , or % 
+  for (i in 1:ncol(data1)){
+    # if the column contains more than 1 observation that has ,
+    if (sum(grepl(",",data1[,i]))>=1){
+      #strip , and convert to numeric
+      data1[,i] <- as.numeric(gsub(",","",data1[,i]))
+    }
+    # if the column contains more than 1 observation that has %
+    if (sum(grepl("%",data1[i]))>=1){
+      #strip %, convert to numeric and divide by 100
+      data1[,i] <- as.numeric(gsub("%","",data1[,i]))/100
+    }
+  }
+  
   #convert the date column into date datatype 
   data1[,"Date"] <- as.Date(data1[,"Date"])
   #choose whatever column of interests when calling the function and the column will be merged with the date column
@@ -163,4 +182,4 @@ bcforecast <- function(col,d){
 # if the column is Deaths, New, Recoveries, then the missing values should be filled with 0
 # if the column is Case, then the missing values should be filled with the previous numerical value
 
-bcforecast("Total Cases",6)
+bcforecast("Total Cases",1)
