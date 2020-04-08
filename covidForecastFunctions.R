@@ -6,7 +6,7 @@ library(stringr)
 
 ###dry run
 #notes on each step are in the functions 
-covid <- read.csv("covid19.csv")
+covid <- read.csv('https://health-infobase.canada.ca/src/data/covidLive/covid19.csv')
 covid$date <- as.Date(covid$date,format="%d-%m-%Y")
 covid %>% 
   filter(prname=="Canada") %>%
@@ -29,7 +29,7 @@ for (i in 1:nrow(covidCanada)){
 
 mode(covidCanada)
 
-  covidCanada[,"Pred"] <- as.data.frame(matrix(ncol=1,nrow=nrow(covidCanada)))
+covidCanada[,"Pred"] <- as.data.frame(matrix(ncol=1,nrow=nrow(covidCanada)))
 covidCanada[,"Lo80"] <- as.data.frame(matrix(ncol=1,nrow=nrow(covidCanada)))
 covidCanada[,"Hi80"] <- as.data.frame(matrix(ncol=1,nrow=nrow(covidCanada)))
 covidCanada[,"Lo95"] <- as.data.frame(matrix(ncol=1,nrow=nrow(covidCanada)))
@@ -78,6 +78,9 @@ covidCanada
 #takes in the name of the province and the name of the columns, both in the string form
 #outputs the dataframe with the cases variable of interest in the province by date 
 extract <- function(pn,cn){
+  covid <- read.csv('https://health-infobase.canada.ca/src/data/covidLive/covid19.csv')
+  covid$date <- as.Date(covid$date,format="%d-%m-%Y")
+  
   covid %>% 
     filter(prname==pn) %>%
     select(date, cn) -> covidCanada
@@ -266,13 +269,13 @@ Cforecaster <- function(dti,d){
   
   #user can choose which table to read and analyze (N or C)
   #N = new cases; C = Cumulative cases 
-  if (dti=="N"){
+  # if (dti=="N"){
     #New cases table is in the 2nd html table 
-    data1 <- (html_table(web,fill=TRUE)[2])
-  } else if (dti=="C"){
+  data1 <- (html_table(web,fill=TRUE)[dti])
+  # } else if (dti=="C"){
     #Cumulative cases table is in the 1st html table
-    data1 <- (html_table(web,fill=TRUE)[1])
-  }
+    # data1 <- (html_table(web,fill=TRUE)[1])
+  # }
   
   #convert to data frame
   data1 <- as.data.frame(data1)
@@ -314,4 +317,52 @@ Cforecaster <- function(dti,d){
     geom_line(aes(y=Hi95),color="green") +
     theme_bw()
 }
+Cforecaster(1,3)
 
+forecasterDB("British Columbia","numtoday",1)
+
+
+colnames(covid)
+covid %>% filter(prname %in% c("British Columbia","Ontario","Quebec"))  %>% select(prname,date,numconf,numdeaths,numtotal,numtested,numtoday) -> df
+ggplot(df,aes(x=date,y=numtotal,group=prname,color=prname)) + geom_line() + theme_bw()
+
+colnames(covid)
+
+head(covid)
+unique(newdf$prname)
+covid %>%
+  mutate(prname=str_replace_all(prname,"British Columbia","BC")) %>%
+  mutate(prname=str_replace_all(prname,"Alberta","AB")) %>% 
+  mutate(prname=str_replace_all(prname,"Quebec","QC")) %>% 
+  mutate(prname=str_replace_all(prname,"Ontario","ON")) %>%
+  mutate(prname=str_replace_all(prname,"Saskatchewan","SK")) %>% 
+  mutate(prname=str_replace_all(prname,"Manitoba","MB")) %>%
+  mutate(prname=str_replace_all(prname,"New Brunswick","NB")) %>% 
+  mutate(prname=str_replace_all(prname,"Newfoundland and Labrador","NL")) %>%
+  mutate(prname=str_replace_all(prname,"Nova Scotia","NS")) %>% 
+  mutate(prname=str_replace_all(prname,"Nunavut","NU")) %>% 
+  mutate(prname=str_replace_all(prname,"Northwest Territories","NT")) %>% 
+  mutate(prname=str_replace_all(prname,"Prince Edward Island","PE"))  %>%
+  filter(prname!= "Repatriated travellers") %>%
+  filter(prname!= "Repatriated Travellers") %>% 
+  filter(prname!="Canada") %>%
+  select(date,prname,numconf,numdeaths,numtoday) %>%
+  rename(`Number of Death` = numdeaths,
+         `Total Cases` = numconf,
+         `New Cases` = numtoday) -> newdf
+
+gather(newdf,"category","Cases",-date,-prname) -> newdf
+labels <- seq.Date(min(covid$date), max(covid$date), length.out=10)
+
+ggplot(newdf,aes(x=date,y=Cases,color=prname)) + 
+  geom_line() + 
+  facet_grid(category~prname,scales="free") +
+  theme_bw() + 
+  theme(legend.position="none",
+        axis.title.x=element_blank(),
+        axis.title.y=element_blank()) + 
+  scale_x_discrete(breaks=labels, labels=as.character(labels))
+labels
+# and set breaks and labels
+p <- p + scale_x_discrete(breaks=labels, labels=as.character(labels))
+p
