@@ -2,7 +2,7 @@
 library(tidyverse)
 library(ggplot2)
 library(forecast)
-
+library(rvest)
 #dry run 
 data1 <- readxl::read_xlsx("BCcovid.xlsx")[,c(1,3)]
 data1
@@ -66,12 +66,27 @@ bcforecast <- function(col,d){
   
   ##rename the columns 
   for (i in 1:length(colnames(dt))){
-    #the first row of observation is the sub-name of the column
-    #concatenate the sub name with the column name and put that as the actual column name
-    if (colnames(dt)[i] %in% c("Cases","Deaths","Recoveries")){
-      colnames(dt)[i] <- paste(dt[1,i],colnames(dt)[i])
+    # print(colnames(dt)[i])
+    if (colnames(dt)[i]==""){
+      colnames(dt)[i] <- colnames(dt)[i-1]
+      print(colnames(dt)[i])
+      # colnames(dt)[i] <- paste(dt[1,i],colnames(dt)[i])
     }
   }
+  
+  for (i in 2:length(colnames(dt))){
+    colnames(dt)[i] <- paste(dt[1,i],colnames(dt[i]))
+  }
+  dt <- dt[,!(grepl(colnames(dt)[3], colnames(dt)))]
+  
+  # 
+  # for (i in 1:length(colnames(dt))){
+  #   #the first row of observation is the sub-name of the column
+  #   #concatenate the sub name with the column name and put that as the actual column name
+  #   if (colnames(dt)[i] %in% c("Cases","Deaths","Recoveries")){
+  #     colnames(dt)[i] <- paste(dt[1,i],colnames(dt)[i])
+  #   }
+  # }
   
   #remove the first observation which contains the sub name 
   dt %>% filter(Date != "Date") -> data1
@@ -164,6 +179,7 @@ bcforecast <- function(col,d){
   }
   #take a look at the data
   print(data1)
+  print(dt)
   #rename the user-selected column to Case 
   #probably not necessary if i just changed the y in ggplot 
   colnames(data1)[2] <- c("Case")
@@ -177,9 +193,44 @@ bcforecast <- function(col,d){
     theme_bw()
   
 }
-#issues:
-# the way missing data is handled should be different depending on the column of interest
-# if the column is Deaths, New, Recoveries, then the missing values should be filled with 0
-# if the column is Case, then the missing values should be filled with the previous numerical value
 
-bcforecast("Total Cases",1)
+bcforecast("Total Recoveries",2)
+
+
+##automatic webscraping from wikipedia page
+link <- "https://en.wikipedia.org/wiki/2020_coronavirus_pandemic_in_British_Columbia"
+web <- read_html(link)
+
+#the 4th html table is the table of the data
+sd <- (html_table(web,fill=TRUE)[4])
+
+#convert to dataframe from list 
+dt <- as.data.frame(sd[[1]])
+head(dt,1)
+colnames(dt)[1]
+
+for (i in 1:length(colnames(dt))){
+  if (!(colnames(dt)[i]==dt[1,i])){
+  }
+  else{
+  }
+}
+
+
+colnames(dt)
+##rename the columns 
+for (i in 1:length(colnames(dt))){
+  # print(colnames(dt)[i])
+  if (colnames(dt)[i]==""){
+    colnames(dt)[i] <- colnames(dt)[i-1]
+    print(colnames(dt)[i])
+    # colnames(dt)[i] <- paste(dt[1,i],colnames(dt)[i])
+  }
+}
+
+for (i in 2:length(colnames(dt))){
+  colnames(dt)[i] <- paste(dt[1,i],colnames(dt[i]))
+}
+dt <- dt[,!(grepl(colnames(dt)[3], colnames(dt)))]
+dt
+# 
